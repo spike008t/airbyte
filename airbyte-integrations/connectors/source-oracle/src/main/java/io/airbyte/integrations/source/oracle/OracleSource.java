@@ -41,6 +41,10 @@ public class OracleSource extends AbstractJdbcSource<JDBCType> implements Source
   private static final String KEY_STORE_FILE_PATH = "clientkeystore.jks";
   private static final String KEY_STORE_PASS = RandomStringUtils.randomAlphanumeric(8);
 
+  private static final String SID = "sid";
+  private static final String SERVICE_NAME = "service_name";
+  private static final String UNRECOGNIZED = "Unrecognized";
+
   enum Protocol {
     TCP,
     TCPS
@@ -70,12 +74,19 @@ public class OracleSource extends AbstractJdbcSource<JDBCType> implements Source
     final Protocol protocol = config.has(JdbcUtils.ENCRYPTION_KEY)
         ? obtainConnectionProtocol(config.get(JdbcUtils.ENCRYPTION_KEY), additionalParameters)
         : Protocol.TCP;
-    final String connectionString = String.format(
-        "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=%s)(HOST=%s)(PORT=%s))(CONNECT_DATA=(SID=%s)))",
-        protocol,
-        config.get(JdbcUtils.HOST_KEY).asText(),
-        config.get(JdbcUtils.PORT_KEY).asText(),
-        config.get("sid").asText());
+    String connectionString;
+    if (config.has("connection_data")) {
+      JsonNode connectionData = config.get("connection_data");
+      final String connectionType = connectionData.has("connection_type") ? connectionData.get("connection_type").asText()
+          : UNRECOGNIZED;
+      connectionString = switch (connectionType) {
+        case SERVICE_NAME -> buildConnectionString(config, protocol.toString(), SERVICE_NAME.toUpperCase(), config.get("connection_data").get(SERVICE_NAME).asText());
+        case SID -> buildConnectionString(config, protocol.toString(), SID.toUpperCase(), config.get("connection_data").get(SID).asText());
+        default -> throw new IllegalArgumentException("Unrecognized connection type: " + connectionType);
+      };
+    } else {
+      connectionString = buildConnectionString(config, protocol.toString(), "SID", config.get("sid").asText());
+    }
 
     final ImmutableMap.Builder<Object, Object> configBuilder = ImmutableMap.builder()
         .put(JdbcUtils.USERNAME_KEY, config.get(JdbcUtils.USERNAME_KEY).asText())
@@ -189,4 +200,13 @@ public class OracleSource extends AbstractJdbcSource<JDBCType> implements Source
     LOGGER.info("completed source: {}", OracleSource.class);
   }
 
+  private String buildConnectionString(JsonNode config, String protocol, String connectionTypeName, String connectionTypeValue) {
+    return String.format(
+        "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=%s)(HOST=%s)(PORT=%s))(CONNECT_DATA=(%s=%s)))",
+        protocol,
+        config.get(JdbcUtils.HOST_KEY).asText(),
+        config.get(JdbcUtils.PORT_KEY).asText(),
+        connectionTypeName,
+        connectionTypeValue);
+  }
 }
