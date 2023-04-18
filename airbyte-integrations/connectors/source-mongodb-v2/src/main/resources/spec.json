@@ -115,6 +115,14 @@
         "default": "admin",
         "examples": ["admin"],
         "order": 4
+      },
+      "collections_exclude_scan": {
+        "title": "Collections to exclude",
+        "type": "string",
+        "description": "The collections list separed by coma to exclude of scan.",
+        "default": "",
+        "examples": ["collection1,collection2"],
+        "order": 5
       }
     }
   }

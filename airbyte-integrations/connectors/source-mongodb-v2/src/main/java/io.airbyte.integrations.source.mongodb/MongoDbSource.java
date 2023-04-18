@@ -70,8 +70,9 @@ public class MongoDbSource extends AbstractDbSource<BsonType, MongoDatabase> {
   @Override
   protected MongoDatabase createDatabase(final JsonNode sourceConfig) throws Exception {
     final var dbConfig = toDatabaseConfig(sourceConfig);
+    final String[] collectionsToExclude = sourceConfig.has(MongoUtils.COLLECTIONS_EXCLUDE_SCAN) ? sourceConfig.get(MongoUtils.COLLECTIONS_EXCLUDE_SCAN).asText().split("\\s*,\\s*") : new String[0];
     final MongoDatabase database = new MongoDatabase(dbConfig.get("connectionString").asText(),
-        dbConfig.get(JdbcUtils.DATABASE_KEY).asText());
+        dbConfig.get(JdbcUtils.DATABASE_KEY).asText(), collectionsToExclude);
     database.setSourceConfig(sourceConfig);
     database.setDatabaseConfig(toDatabaseConfig(sourceConfig));
     return database;

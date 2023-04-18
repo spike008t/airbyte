@@ -86,6 +86,7 @@ public class MongoUtils {
   public static final String AIRBYTE_DATA_HASH = "_airbyte_data_hash";
 
   // MongodbSource specific constants
+  public static final String COLLECTIONS_EXCLUDE_SCAN = "collections_exclude_scan";
   public static final String AUTH_SOURCE = "auth_source";
   public static final String PRIMARY_KEY = "_id";
   public static final Set<BsonType> ALLOWED_CURSOR_TYPES = Set.of(DOUBLE, STRING, DOCUMENT, OBJECT_ID, DATE_TIME,

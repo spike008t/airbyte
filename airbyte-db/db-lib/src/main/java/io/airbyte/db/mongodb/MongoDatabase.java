@@ -18,6 +18,7 @@ import io.airbyte.commons.exceptions.ConnectionErrorException;
 import io.airbyte.commons.functional.CheckedFunction;
 import io.airbyte.commons.util.MoreIterators;
 import io.airbyte.db.AbstractDatabase;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -43,12 +44,18 @@ public class MongoDatabase extends AbstractDatabase implements AutoCloseable {
   private final ConnectionString connectionString;
   private final com.mongodb.client.MongoDatabase database;
   private final MongoClient mongoClient;
+  private final List<String> collectionsToExclude;
 
   public MongoDatabase(final String connectionString, final String databaseName) {
+    this(connectionString, databaseName, new String[0]);
+  }
+
+  public MongoDatabase(final String connectionString, final String databaseName, final String[] collectionsToExclude) {
     try {
       this.connectionString = new ConnectionString(connectionString);
       mongoClient = MongoClients.create(this.connectionString);
       database = mongoClient.getDatabase(databaseName);
+      this.collectionsToExclude = Arrays.stream(collectionsToExclude).map(c -> databaseName + "." + c).collect(Collectors.toList());
     } catch (final MongoConfigurationException e) {
       LOGGER.error(e.getMessage(), e);
       throw new ConnectionErrorException(String.valueOf(e.getCode()), e.getMessage(), e);
@@ -76,8 +83,10 @@ public class MongoDatabase extends AbstractDatabase implements AutoCloseable {
     if (collectionNames == null) {
       return Collections.EMPTY_SET;
     }
-    return MoreIterators.toSet(database.listCollectionNames().iterator()).stream()
-        .filter(c -> !c.startsWith(MONGO_RESERVED_COLLECTION_PREFIX)).collect(Collectors.toSet());
+    return MoreIterators.toSet(collectionNames.iterator()).stream()
+        .filter(c -> !c.startsWith(MONGO_RESERVED_COLLECTION_PREFIX))
+        .filter(c -> !this.collectionsToExclude.contains(c))
+        .collect(Collectors.toSet());
   }
 
   public MongoCollection<Document> getCollection(final String collectionName) {
